@@ -10,7 +10,7 @@ describe("ETHDaddy", () => {
 
   let ethDaddy
   let deployer, owner1
-  //let result
+  
   const NAME = "ETH Daddy"
   const SYMBOL = "ETHD"
 
@@ -52,6 +52,5 @@ describe("ETHDaddy", () => {
     })
   
   })
-
   
 })

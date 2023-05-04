@@ -17,6 +17,12 @@ contract ETHDaddy is ERC721 {
     /// 2. Buy domains
     /// 3. Get paid
 
+    struct Domain {
+        string name;
+        uint256 cost;
+        bool isOwned;
+    }
+
     constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {
         //name = "ETH Daddy";
         //name = _name;
@@ -25,5 +31,13 @@ contract ETHDaddy is ERC721 {
         // add code here ....
 
         owner = msg.sender;
+    }
+    function list(string memory _name, uint256 _cost) public {
+        // code goes here...
+
+        // Model a domain
+        // Save the domain
+        // update total domain count
+
     }
 }
