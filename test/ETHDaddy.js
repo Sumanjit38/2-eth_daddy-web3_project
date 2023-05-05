@@ -26,6 +26,9 @@ describe("ETHDaddy", () => {
     const ETHDaddy = await ethers.getContractFactory('ETHDaddy')
     ethDaddy = await ETHDaddy.deploy("ETH Daddy", "ETHD")
 
+    const transaction = await ethDaddy.connect(deployer).list("jack.eth", tokens(10))
+    await transaction.wait()
+
   })
 
   describe("Deployment", () => {
@@ -51,6 +54,13 @@ describe("ETHDaddy", () => {
   
     })
   
+  })
+
+  describe("Domain",() => {
+    it("Returns domain attriburtes", async () => {
+      let domain = await ethDaddy.domains(1);
+      expect(domain.name).to.be.equal("jack.eth")
+    })
   })
   
 })

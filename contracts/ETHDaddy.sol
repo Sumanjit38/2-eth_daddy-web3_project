@@ -23,6 +23,8 @@ contract ETHDaddy is ERC721 {
         bool isOwned;
     }
 
+    mapping(uint256 => Domain) public domains;
+
     constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {
         //name = "ETH Daddy";
         //name = _name;
@@ -36,6 +38,7 @@ contract ETHDaddy is ERC721 {
         // code goes here...
 
         // Model a domain
+        domains[1] = Domain(_name, _cost, false);
         // Save the domain
         // update total domain count
 
