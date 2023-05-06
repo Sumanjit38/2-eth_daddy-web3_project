@@ -8,6 +8,7 @@ import {
   ResolvedFile as IResolvedFile,
 } from "../../types/builtin-tasks";
 import {
+  includesOwnPackageName,
   isAbsolutePathSourceName,
   isLocalSourceName,
   normalizeSourceName,
@@ -68,7 +69,10 @@ export class Resolver {
   constructor(
     private readonly _projectRoot: string,
     private readonly _parser: Parser,
-    private readonly _readFile: (absolutePath: string) => Promise<string>
+    private readonly _readFile: (absolutePath: string) => Promise<string>,
+    private readonly _transformImportName: (
+      importName: string
+    ) => Promise<string>
   ) {}
 
   /**
@@ -99,12 +103,14 @@ export class Resolver {
   /**
    * Resolves an import from an already resolved file.
    * @param from The file were the import statement is present.
-   * @param imported The path in the import statement.
+   * @param importName The path in the import statement.
    */
   public async resolveImport(
     from: ResolvedFile,
-    imported: string
+    importName: string
   ): Promise<ResolvedFile> {
+    const imported = await this._transformImportName(importName);
+
     const scheme = this._getUriScheme(imported);
     if (scheme !== undefined) {
       throw new HardhatError(ERRORS.RESOLVER.INVALID_IMPORT_PROTOCOL, {
@@ -123,6 +129,15 @@ export class Resolver {
 
     if (isAbsolutePathSourceName(imported)) {
       throw new HardhatError(ERRORS.RESOLVER.INVALID_IMPORT_ABSOLUTE_PATH, {
+        from: from.sourceName,
+        imported,
+      });
+    }
+
+    // Edge-case where an import can contain the current package's name in monorepos.
+    // The path can be resolved because there's a symlink in the node modules.
+    if (await includesOwnPackageName(imported)) {
+      throw new HardhatError(ERRORS.RESOLVER.INCLUDES_OWN_PACKAGE_NAME, {
         from: from.sourceName,
         imported,
       });
@@ -172,14 +187,26 @@ export class Resolver {
           ERRORS.RESOLVER.LIBRARY_FILE_NOT_FOUND
         )
       ) {
-        throw new HardhatError(
-          ERRORS.RESOLVER.IMPORTED_FILE_NOT_FOUND,
-          {
-            imported,
-            from: from.sourceName,
-          },
-          error
-        );
+        if (imported !== importName) {
+          throw new HardhatError(
+            ERRORS.RESOLVER.IMPORTED_MAPPED_FILE_NOT_FOUND,
+            {
+              imported,
+              importName,
+              from: from.sourceName,
+            },
+            error
+          );
+        } else {
+          throw new HardhatError(
+            ERRORS.RESOLVER.IMPORTED_FILE_NOT_FOUND,
+            {
+              imported,
+              from: from.sourceName,
+            },
+            error
+          );
+        }
       }
 
       if (
@@ -265,11 +292,30 @@ export class Resolver {
       nodeModulesPath = path.dirname(nodeModulesPath);
     }
 
-    await this._validateSourceNameExistenceAndCasing(
-      nodeModulesPath,
-      sourceName,
-      true
-    );
+    let absolutePath: string;
+    if (path.basename(nodeModulesPath) !== NODE_MODULES) {
+      // this can happen in monorepos that use PnP, in those
+      // cases we handle resolution differently
+      const packageRoot = path.dirname(packageJsonPath);
+      const pattern = new RegExp(`^${libraryName}/?`);
+      const fileName = sourceName.replace(pattern, "");
+
+      await this._validateSourceNameExistenceAndCasing(
+        packageRoot,
+        // TODO: this is _not_ a source name; we should handle this scenario in
+        // a better way
+        fileName,
+        true
+      );
+      absolutePath = path.join(packageRoot, fileName);
+    } else {
+      await this._validateSourceNameExistenceAndCasing(
+        nodeModulesPath,
+        sourceName,
+        true
+      );
+      absolutePath = path.join(nodeModulesPath, sourceName);
+    }
 
     const packageInfo: {
       name: string;
@@ -280,7 +326,7 @@ export class Resolver {
     return this._resolveFile(
       sourceName,
       // We resolve to the real path here, as we may be resolving a linked library
-      await getRealPath(path.join(nodeModulesPath, sourceName)),
+      await getRealPath(absolutePath),
       libraryName,
       libraryVersion
     );

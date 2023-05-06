@@ -24,7 +24,7 @@ export interface RpcBlockOutput {
   gasLimit: string;
   gasUsed: string;
   hash: string | null;
-  logsBloom: string | null;
+  logsBloom: string;
   miner: string;
   mixHash: string | null;
   nonce: string | null;
@@ -40,6 +40,8 @@ export interface RpcBlockOutput {
   transactionsRoot: string;
   uncles: string[];
   baseFeePerGas?: string;
+  withdrawals?: RpcWithdrawalItem[];
+  withdrawalsRoot?: string;
 }
 
 export type RpcTransactionOutput =
@@ -147,6 +149,13 @@ export interface RpcDebugTraceOutput {
   structLogs: RpcStructLog[];
 }
 
+export interface RpcWithdrawalItem {
+  index: string;
+  validatorIndex: string;
+  address: string;
+  amount: string;
+}
+
 /* eslint-disable @nomiclabs/hardhat-internal-rules/only-hardhat-error */
 
 export function getRpcBlock(
@@ -171,7 +180,7 @@ export function getRpcBlock(
     nonce: pending ? null : bufferToRpcData(block.header.nonce, 8),
     mixHash: pending ? null : bufferToRpcData(block.header.mixHash, 32),
     sha3Uncles: bufferToRpcData(block.header.uncleHash),
-    logsBloom: pending ? null : bufferToRpcData(block.header.logsBloom),
+    logsBloom: bufferToRpcData(block.header.logsBloom),
     transactionsRoot: bufferToRpcData(block.header.transactionsTrie),
     stateRoot: bufferToRpcData(block.header.stateRoot),
     receiptsRoot: bufferToRpcData(block.header.receiptTrie),
@@ -189,6 +198,17 @@ export function getRpcBlock(
 
   if (block.header.baseFeePerGas !== undefined) {
     output.baseFeePerGas = numberToRpcQuantity(block.header.baseFeePerGas);
+  }
+
+  if (block.header.withdrawalsRoot !== undefined) {
+    output.withdrawals = block.withdrawals?.map((withdrawal) => ({
+      index: numberToRpcQuantity(withdrawal.index),
+      validatorIndex: numberToRpcQuantity(withdrawal.validatorIndex),
+      address: bufferToRpcData(withdrawal.address.toBuffer()),
+      amount: numberToRpcQuantity(withdrawal.amount),
+    }));
+
+    output.withdrawalsRoot = bufferToRpcData(block.header.withdrawalsRoot);
   }
 
   return output;

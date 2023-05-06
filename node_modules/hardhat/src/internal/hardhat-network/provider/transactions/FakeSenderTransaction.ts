@@ -7,6 +7,7 @@ import {
   InternalError,
   InvalidArgumentsError,
 } from "../../../core/providers/errors";
+import { makeFakeSignature } from "../utils/makeFakeSignature";
 
 /* eslint-disable @nomiclabs/hardhat-internal-rules/only-hardhat-error */
 
@@ -97,14 +98,16 @@ export class FakeSenderTransaction extends Transaction {
   private readonly _sender: Address;
 
   constructor(sender: Address, data: TxData = {}, opts?: TxOptions) {
+    const fakeSignature = makeFakeSignature(data, sender);
+
     super(
       {
         ...data,
         v: data.v ?? 27,
-        r: data.r ?? 1,
-        s: data.s ?? 2,
+        r: data.r ?? fakeSignature.r,
+        s: data.s ?? fakeSignature.s,
       },
-      { ...opts, freeze: false }
+      { ...opts, freeze: false, disableMaxInitCodeSizeCheck: true }
     );
 
     this.common = this._getCommon(opts?.common);
