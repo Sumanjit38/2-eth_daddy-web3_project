@@ -14,13 +14,24 @@ import config from './config.json';
 
 function App() {
 
+  const [account, setAccount] = useState(null)
+
+  const loadBlockchainData = async () => {
+    
+  }
+
+  useEffect(() => {
+    loadBlockchainData()
+  }, [])
+
   return (
     <div>
+      <Navigation account={account} setAccount={setAccount} />
 
       <div className='cards__section'>
 
         <h2 className='cards__title'>Welcome to ETH Daddy !</h2>
-
+        
       </div>
 
     </div>
